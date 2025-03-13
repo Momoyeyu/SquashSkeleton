@@ -74,20 +74,6 @@ if __name__ == "__main__":
     if yolo is None:
         yolo = 'easy_ViTPose/' + ('yolov8s' + ('.onnx' if has_onnx and not (use_mps or use_cuda) else '.pt'))
     input_path = args.input
-    ext = input_path[input_path.rfind('.'):]
-
-    assert not (args.save_img or args.save_json) or args.output_path, \
-        'Specify an output path if using save-img or save-json flags'
-    output_path = args.output_path
-    if output_path:
-        if os.path.isdir(output_path):
-            save_name_img = os.path.basename(input_path).replace(ext, f"_result{ext}")
-            save_name_json = os.path.basename(input_path).replace(ext, "_result.json")
-            output_path_img = os.path.join(output_path, save_name_img)
-            output_path_json = os.path.join(output_path, save_name_json)
-        else:
-            output_path_img = output_path + f'{ext}'
-            output_path_json = output_path + '.json'
 
     # Load the image / video reader
     try:  # Check if is webcam
@@ -96,6 +82,21 @@ if __name__ == "__main__":
     except ValueError:
         assert os.path.isfile(input_path), 'The input file does not exist'
         is_video = input_path[input_path.rfind('.') + 1:].lower() in ['mp4', 'mov']
+
+    ext = '.mp4' if is_video else '.png'
+    assert not (args.save_img or args.save_json) or args.output_path, \
+        'Specify an output path if using save-img or save-json flags'
+    output_path = args.output_path
+    if output_path:
+        if os.path.isdir(output_path):
+            og_ext = input_path[input_path.rfind('.'):]
+            save_name_img = os.path.basename(input_path).replace(og_ext, f"_result{ext}")
+            save_name_json = os.path.basename(input_path).replace(og_ext, "_result.json")
+            output_path_img = os.path.join(output_path, save_name_img)
+            output_path_json = os.path.join(output_path, save_name_json)
+        else:
+            output_path_img = output_path + f'{ext}'
+            output_path_json = output_path + '.json'
 
     wait = 0
     total_frames = 1
@@ -113,8 +114,17 @@ if __name__ == "__main__":
             assert ret
             assert fps > 0
             output_size = frame.shape[:2][::-1]
+
+            # Check if we have X264 otherwise use default MJPG
+            try:
+                temp_video = cv2.VideoWriter('/tmp/checkcodec.mp4',
+                                             cv2.VideoWriter_fourcc(*'h264'), 30, (32, 32))
+                opened = temp_video.isOpened()
+            except Exception:
+                opened = False
+            codec = 'h264' if opened else 'MJPG'
             out_writer = cv2.VideoWriter(output_path_img,
-                                         cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'),
+                                         cv2.VideoWriter_fourcc(*codec),  # More efficient codec
                                          fps, output_size)  # type: ignore
     else:
         reader = [np.array(Image.open(input_path).rotate(args.rotate))]  # type: ignore
