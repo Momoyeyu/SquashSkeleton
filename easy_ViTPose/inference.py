@@ -1,7 +1,6 @@
 import abc
 import os
-from typing import Optional
-import typing
+from typing import Optional, Any
 
 import cv2
 import numpy as np
@@ -218,7 +217,7 @@ class VitInference:
         """
         raise NotImplementedError
 
-    def inference(self, img: np.ndarray) -> dict[typing.Any, typing.Any]:
+    def inference(self, img: np.ndarray):
         """
         Perform inference on the input image.
 
